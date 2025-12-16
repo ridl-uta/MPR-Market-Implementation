@@ -1,0 +1,72 @@
+@startuml hpc_manager_mprint_overview
+' ---------- Layout & styling for readability ----------
+skinparam defaultFontName "Inter"
+skinparam shadowing true
+skinparam roundcorner 18
+skinparam linetype ortho
+skinparam ArrowThickness 1.4
+skinparam ArrowColor #475569
+skinparam ArrowFontSize 13
+skinparam nodesep 500    ' Increased horizontal spacing
+skinparam ranksep 500    ' Increased vertical spacing
+skinparam packageStyle Rectangle
+skinparam componentStyle rectangle
+skinparam RectangleBorderColor #334155
+skinparam RectangleBackgroundColor #ffffff
+skinparam wrapWidth 200
+skinparam dpi 200
+
+title High-Level Architecture — HPC Manager + Slurm + Per-Job Clients (MPR-INT on Power Oversubscription)
+
+' ---------- Top-level blocks ----------
+rectangle "HPC Manager" as MAN #FFFFFF {
+  component "Power Monitor" as PMON
+  component "MPR-INT Negotiator" as MPRINT
+}
+
+package "Slurm" as SLURM {
+  component "slurmctld\n(Controller)" as SLURMCTLD
+  component "slurmd\n(Node Agent)" as SLURMD
+}
+
+rectangle "Per-Job on Compute Nodes\n(repeats for each job)" as JOBGROUP #FFFFFF {
+  component "HPC Job" as JOB
+  component "Client Agent\n(per job)" as CLIENT
+}
+
+' ---------- Relationships (normal operation) ----------
+MAN -right-> SLURMCTLD :    \n
+SLURMCTLD -down-> SLURMD :    \n
+SLURMD -down-> JOB : Start /\nstop job processes
+
+' Hidden spacers to separate vertical arrows more
+rectangle " " as VSPACER1 #white
+SLURMCTLD -[hidden]-> VSPACER1
+VSPACER1 -[hidden]-> SLURMD
+
+' Client telemetry path (steady-state)
+CLIENT ..left..> MAN :    \n
+
+' ---------- Oversubscription & MPR-INT negotiation loop ----------
+PMON -up-> MAN : \n
+
+MAN -right-> MPRINT : Initiate\nMPR-INT
+CLIENT -right-> MPRINT: \n
+MPRINT -up-> MPRINT : Iterate\nuntil convergence\n(clear price q*)
+MPRINT -left-> CLIENT: \n
+
+' ---------- Notes ----------
+note right of MAN
+1) Normal: Slurm schedules; clients send telemetry.
+3) HPC Manager starts MPR-INT; negotiates bids fᵢ(q).
+4) Converge on clearing price q* and per-job reductions Δᵢ.
+5) HPC Manager applies DVFS/caps; jobs continue under reduced power.
+end note
+
+' ---------- Visual spacing helpers ----------
+rectangle " " as PAD1 #white
+rectangle " " as PAD2 #white
+PAD1 -[hidden]-> MAN
+PAD1 -[hidden]-> SLURM
+PAD2 -[hidden]-> JOBGROUP
+@enduml

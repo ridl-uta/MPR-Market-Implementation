@@ -1,0 +1,40 @@
+services:
+  server:
+    image: server-image
+    build: ./server
+    ports:
+      - "5000:5000"
+      - "8000:8000"
+      - "5678:5678"
+    volumes:
+      - ./server:/app
+    working_dir: /app
+    command: python -m debugpy --listen 0.0.0.0:5678 --wait-for-client main.py
+    environment:
+      - SUBSCRIBED_POWER=1200
+    networks:
+      - hpcnet
+
+  client:
+    image: client-image
+    build: ./client
+    depends_on:
+      - server
+    volumes:
+      - ./client:/app
+      - ./data:/data
+      - client-shared:/shared
+    working_dir: /app
+    entrypoint: ["./entrypoint.sh"]
+    environment:
+      - JOB_CHOICES=xsbench minife comd
+      - DELAY_START=15
+      - DELAY_STEP=2
+    networks:
+      - hpcnet    
+
+networks:
+  hpcnet:
+
+volumes:
+  client-shared:

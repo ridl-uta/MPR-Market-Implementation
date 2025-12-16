@@ -1,0 +1,72 @@
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script>
+    const socket = io();
+
+    socket.on('job_update', (data) => {
+        const tbody = document.getElementById('job-table-body');
+        tbody.innerHTML = '';
+
+        data.jobs.forEach(job => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${job.job_id}</td>
+                <td>${job.job_name}</td>
+                <td>${job.resource_reduction.toFixed(2)}</td>
+                <td>${job.power.toFixed(2)}</td>
+                <td>${job.current_bid !== null && job.current_bid > 0 ? job.current_bid.toFixed(2) : '-'}</td>
+            `;
+            tbody.appendChild(row);
+        });
+        const alertBox = document.getElementById('power-warning');
+        if (data.warning) {
+            alertBox.textContent = "⚠️ Power usage exceeded! MPR-INT is being initiated...";
+        } else if (data.current_clearing_price !== null && data.current_clearing_price !== undefined) {
+            alertBox.textContent = `✅ Market cleared with clearing price: ${data.current_clearing_price.toFixed(4)} in ${data.execution_time.toFixed(2)} seconds`;
+        } else {
+            alertBox.textContent = "";  // Clear the label
+        }
+
+        document.getElementById('total-power').textContent = data.total_power.toFixed(2);
+        document.getElementById('subscribed-power').textContent = data.subscribed_power.toFixed(2);
+    });
+</script>
+
+
+<h1>Active Jobs</h1>
+<table border="1" cellpadding="10" style="background-color:#1e1e1e; color:#e0e0e0;">
+    <thead>
+        <tr>
+            <th>Job ID</th>
+            <th>Job Name</th>
+            <th>Resource Reduction</th>
+            <th>Power Usage (W)</th>
+            <th>Bid</th>
+        </tr>
+    </thead>
+    <tbody id="job-table-body">
+        {% for job in jobs %}
+        <tr>
+            <td>{{ job.job_id }}</td>
+            <td>{{ job.job_name }}</td>
+            <td>{{ job.resource_reduction }}</td>
+            <td>{{ job.power }}</td>
+            <td>
+                {% if job.current_bid is not none %}
+                    {{ job.current_bid }}
+                {% else %}
+                    -
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<p>
+    <strong>Total Power Usage:</strong> 
+    <span id="total-power">{{ total_power }}</span> W /
+    <strong>Subscribed:</strong> 
+    <span id="subscribed-power">{{ subscribed_power }}</span> W
+    <span id="power-warning" style="color: #ff4c4c; font-weight: bold; margin-left: 15px;"></span>
+</p>
+

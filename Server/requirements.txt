@@ -1,0 +1,8 @@
+numpy
+scipy
+flask
+jinja2  # If using HTML templates like `log.html`
+pandas
+eventlet
+flask-socketio
+debugpy

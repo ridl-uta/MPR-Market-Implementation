@@ -1,0 +1,21 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Environments
+.venv/
+venv/
+env/
+
+# Editor/IDE
+.vscode/
+
+# Packaging / build
+build/
+dist/
+*.egg-info/
+
+# OS
+.DS_Store
