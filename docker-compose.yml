@@ -1,13 +1,13 @@
 services:
   server:
     image: server-image
-    build: ./server
+    build: ./Server
     ports:
       - "5000:5000"
       - "8000:8000"
       - "5678:5678"
     volumes:
-      - ./server:/app
+      - ./Server:/app
     working_dir: /app
     command: python -m debugpy --listen 0.0.0.0:5678 --wait-for-client main.py
     environment:
@@ -17,12 +17,12 @@ services:
 
   client:
     image: client-image
-    build: ./client
+    build: ./Client
     depends_on:
       - server
     volumes:
-      - ./client:/app
-      - ./data:/data
+      - ./Client:/app
+      - ./Data:/data
       - client-shared:/shared
     working_dir: /app
     entrypoint: ["./entrypoint.sh"]
