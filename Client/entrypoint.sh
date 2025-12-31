@@ -56,7 +56,7 @@ echo "[Entrypoint] Selected job: $JOB_NAME"
 echo "[Entrypoint] Sleeping for $DELAY_SEC seconds before starting..."
 sleep "$DELAY_SEC"
 
-exec python3 main.py \
+exec python3 -u main.py \
   --job "$JOB_NAME" \
   --perf_data_path /data/all_model_data.xlsx \
   --host server \

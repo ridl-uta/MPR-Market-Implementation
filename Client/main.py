@@ -8,6 +8,7 @@ import threading
 import time
 import numpy as np
 import os
+from functools import lru_cache
 
 CLIENT_NAME = f"Worker_{uuid.uuid4().hex[:6]}"
 HPC_MANAGER_HOST = "127.0.0.1"
@@ -76,24 +77,17 @@ def create_dummy_job(job_name, perf_data=None):
 
 # --------------------- Optimization ---------------------
 
-def maximize_net_gain_with_data_brute(df, q, delta_max, resolution=500, min_skip_idx=5):
-    def supply(b, q, delta):
-        return max(delta - b / q, 0)
-
-    def cost_from_data_unit(x, df, delta_m, epsilon=1e-6):
-        if x < epsilon:
-            return 0
-        x_scaled = np.clip(x / delta_m, 0, 1)
-        df_sorted = df.sort_values(by="Resource Reduction")
-        L_x = np.interp(x_scaled, df_sorted["Resource Reduction"], df_sorted["Extra Execution"])
-        return L_x / x_scaled
-
-    def net_gain(b):
-        x = supply(b, q, delta_max)
-        return q * x - cost_from_data_unit(x, df, delta_max)
-
+def maximize_net_gain_with_data_brute(rr, ee, q, delta_max, resolution=500, min_skip_idx=5):
+    """Compute bid maximizing net gain using precomputed arrays for speed."""
     b_vals = np.linspace(1e-6, q * delta_max, resolution)
-    gains = [net_gain(b) for b in b_vals]
+    x = np.maximum(delta_max - b_vals / q, 0)
+    x_scaled = np.clip(x / delta_max, 0, 1)
+
+    # Avoid division by zero for very small x_scaled
+    L_x = np.interp(x_scaled, rr, ee)
+    cost = np.divide(L_x, x_scaled, out=np.zeros_like(L_x), where=x_scaled > 1e-6)
+
+    gains = q * x - cost
 
     gradient = np.gradient(gains)
     slope_change_idx = np.argmax(gradient[min_skip_idx:] > 0) + min_skip_idx
@@ -101,11 +95,38 @@ def maximize_net_gain_with_data_brute(df, q, delta_max, resolution=500, min_skip
     best_bid = b_vals[best_idx]
     best_gain = gains[best_idx]
 
-    return best_bid, best_gain, net_gain
+    return best_bid, best_gain, gains
+
+
+def maximize_net_gain_with_data_brute_vectorized(rr, ee, q, delta_max, resolution=500, min_skip_idx=5):
+    """Vectorized variant used for testing/benchmarking."""
+    b_vals = np.linspace(1e-6, q * delta_max, resolution)
+    x = np.maximum(delta_max - b_vals / q, 0)
+    x_scaled = np.clip(x / delta_max, 0, 1)
+
+    L_x = np.interp(x_scaled, rr, ee)
+    cost = np.divide(L_x, x_scaled, out=np.zeros_like(L_x), where=x_scaled > 1e-6)
+    gains = q * x - cost
+
+    gradient = np.gradient(gains)
+    slope_change_idx = np.argmax(gradient[min_skip_idx:] > 0) + min_skip_idx
+    best_idx = slope_change_idx + np.argmax(gains[slope_change_idx:])
+    best_bid = b_vals[best_idx]
+    best_gain = gains[best_idx]
+    return best_bid, best_gain, gains
+
+
+@lru_cache(maxsize=256)
+def cached_bid_gain(q_key, delta_max, rr_tuple, ee_tuple):
+    """LRU-cached wrapper keyed on quantized q and immutable perf arrays."""
+    rr = np.fromiter(rr_tuple, dtype=float)
+    ee = np.fromiter(ee_tuple, dtype=float)
+    bid, gain, _ = maximize_net_gain_with_data_brute(rr, ee, q_key, delta_max)
+    return bid, gain
 
 # --------------------- Persistent Connection ---------------------
 
-def persistent_client_loop(job_msg, perf_df, delta_max, host, port, max_retries=None, backoff_base=1, backoff_cap=30):
+def persistent_client_loop(job_msg, perf_arrays, delta_max, host, port, max_retries=None, backoff_base=1, backoff_cap=30):
     """Maintain a persistent connection; reconnect with backoff on failures."""
     attempt = 0
 
@@ -128,15 +149,22 @@ def persistent_client_loop(job_msg, perf_df, delta_max, host, port, max_retries=
                         
                         if "job_id" in message:
                             job_id = message["job_id"]
-                            print(f"[{CLIENT_NAME}] Received job_id: {job_id}")
+                            #print(f"[{CLIENT_NAME}] Received job_id: {job_id}")
 
                         if job_id is not None:
                             command = message.get("command")
 
                             if command == "update_price":
                                 q = message.get("q")
-                                print(f"[{CLIENT_NAME}] Received q′ = {q:.4f}")
-                                bid, gain, _ = maximize_net_gain_with_data_brute(perf_df, q, delta_max)
+                                #print(f"[{CLIENT_NAME}] Received q′ = {q:.4f}")
+                                q_key = round(q, 3)
+                                cache_info_before = cached_bid_gain.cache_info()
+                                t0 = time.perf_counter()
+                                bid, gain = cached_bid_gain(q_key, delta_max, perf_arrays["rr_tuple"], perf_arrays["ee_tuple"])
+                                elapsed_ms = (time.perf_counter() - t0) * 1000
+                                cache_info_after = cached_bid_gain.cache_info()
+                                hit = cache_info_after.hits > cache_info_before.hits
+                                print(f"[{CLIENT_NAME}] bid calc for q={q:.4f} ({'cache hit' if hit else 'cache miss'}) in {elapsed_ms:.3f} ms")
 
                                 bid_response = {
                                     "command": "submit_bid",
@@ -144,7 +172,7 @@ def persistent_client_loop(job_msg, perf_df, delta_max, host, port, max_retries=
                                     "bid": bid
                                 }
                                 send_pickle_message(s, bid_response)
-                                print(f"[{CLIENT_NAME}] Sent bid: {bid:.4f}")
+                                #print(f"[{CLIENT_NAME}] Sent bid: {bid:.4f}")
                             
                             else:
                                 print(f"[{CLIENT_NAME}] Unknown command received: {command}")
@@ -198,10 +226,20 @@ if __name__ == "__main__":
 
     job_msg, perf_df = create_dummy_job(args.job, performance_df)
     delta_max = perf_df["Resource Reduction"].max()
+    # Precompute sorted arrays for faster bidding
+    perf_sorted = perf_df.sort_values("Resource Reduction")
+    rr = perf_sorted["Resource Reduction"].to_numpy()
+    ee = perf_sorted["Extra Execution"].to_numpy()
+    perf_arrays = {
+        "rr": rr,
+        "ee": ee,
+        "rr_tuple": tuple(rr),
+        "ee_tuple": tuple(ee),
+    }
     job_id = ""
 
 
     # Uncomment if your server supports /ping endpoint
     # threading.Thread(target=keep_alive, args=(args.host, args.http_port), daemon=True).start()
 
-    persistent_client_loop(job_msg, perf_df, delta_max, args.host, args.port)
+    persistent_client_loop(job_msg, perf_arrays, delta_max, args.host, args.port)

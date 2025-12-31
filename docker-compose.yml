@@ -11,7 +11,7 @@ services:
     working_dir: /app
     command: python -m debugpy --listen 0.0.0.0:5678 --wait-for-client main.py
     environment:
-      - SUBSCRIBED_POWER=1200
+      - SUBSCRIBED_POWER=38610
     networks:
       - hpcnet
 

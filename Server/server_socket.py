@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import io
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 class ServerSocket:
     def __init__(self, job_manager, host="0.0.0.0", port=8000):
@@ -89,7 +90,7 @@ class ServerSocket:
                         bid = message.get("bid")
                         if job_id and bid is not None:    
                             self.active_bids[job_id] = bid
-                            print(f"[Server] Received bid from {job_id}: {bid:.4f}")
+                            #print(f"[Server] Received bid from {job_id}: {bid:.4f}")
                             self.send_pickle_message(conn, {"message": "Bid received."})
                         else:
                             self.send_pickle_message(conn, {"error": "Missing job_id or bid."})
@@ -157,7 +158,7 @@ class ServerSocket:
 
         for idx, job in enumerate(self.job_manager.jobs):
             job_id = job["job_id"]
-            print(f"[MPR-INT]   computing job {idx+1}/{total_jobs} -> {job_id}")
+            # print(f"[MPR-INT]   computing job {idx+1}/{total_jobs} -> {job_id}")
             # df = pd.read_json(io.StringIO(job["perf_data"]))
             # delta_max = df["Resource Reduction"].max()
             delta_max = job["max_reduction"]  # Assuming delta_max is stored in the job data
@@ -173,7 +174,7 @@ class ServerSocket:
         print(f"[MPR-INT] Final supply array built in {(time.time() - start_ts):.3f}s")
         return supply_array
 
-    def initiate_mpr_int_negotiation(self, C_target, q_bounds=(0.1, 5), tolerance=1e-3, max_iters=12):
+    def initiate_mpr_int_negotiation(self, C_target, q_bounds=(0.1, 5), tolerance=1e-2, max_iters=12):
         with self.mode_lock:
             self.mode = "negotiation"
         print("[MPR-INT] Starting MPR-INT negotiation...Target C:", C_target)
@@ -186,19 +187,28 @@ class ServerSocket:
         last_valid_q = None
         last_valid_bids = None
 
-        
+        total_communication_time = 0
+        total_negotiation_time = 0
+
         try:
             for iteration in range(max_iters):
+                startTimeCommunication = time.time()
                 current_iteration = iteration
                 print(f"[MPR-INT] Iteration {iteration}, Sending q′ = {q_current:.4f}")
                 current_bids = {job["job_id"]: None for job in self.job_manager.jobs}
                 self.active_bids.clear()
 
-                for conn in self.connected_clients:
+                # Pre-serialize the payload once and send in parallel to avoid slow sockets blocking others
+                payload = {"command": "update_price", "q": q_current}
+
+                def _send(conn):
                     try:
-                        self.send_pickle_message(conn, {"command": "update_price", "q": q_current})
+                        self.send_pickle_message(conn, payload)
                     except Exception as e:
                         print(f"[MPR-INT] Failed to send to client: {e}")
+
+                with ThreadPoolExecutor(max_workers=min(32, len(self.connected_clients) or 1)) as pool:
+                    list(pool.map(_send, self.connected_clients))
 
                 remaining_jobs = set(current_bids.keys())
                 while remaining_jobs:
@@ -206,13 +216,17 @@ class ServerSocket:
                         if job_id in self.active_bids:
                             current_bids[job_id] = self.active_bids[job_id]
                             remaining_jobs.remove(job_id)
-                    time.sleep(0.05)
+                    # time.sleep(0.05)
 
+                communication_time_delta = time.time() - startTimeCommunication
+                print(f"[Time-log] communication time delta: {communication_time_delta}s")
+                total_communication_time += communication_time_delta
+                
                 bidding_history[q_current] = current_bids.copy()
 
                 def clearing_price_root(q_try):
                     total_reduction = self.get_total_reduction_at_q(q_try, current_bids, [job["perf_data"] for job in self.job_manager.jobs])
-                    print(f"[MPR-INT] Trying q={q_try:.6f}, Total Reduction={total_reduction:.6f} residual={total_reduction - C_target:.6f} ")
+                    # print(f"[MPR-INT] Trying q={q_try:.6f}, Total Reduction={total_reduction:.6f} residual={total_reduction - C_target:.6f} ")
                     return total_reduction - C_target
 
                 try:
@@ -222,14 +236,18 @@ class ServerSocket:
                     res_high = clearing_price_root(q_high)
 
                     if res_low > 0:
-                        print("[MPR-INT] Lower bound already positive; using q_low")
+                        # print("[MPR-INT] Lower bound already positive; using q_low")
                         q_new, residual = q_low, res_low
                     elif res_high < 0:
-                        print("[MPR-INT] Upper bound still negative; keeping q_high")
+                        # print("[MPR-INT] Upper bound still negative; keeping q_high")
                         q_new, residual = q_high, res_high
                     else:
+                        startNegotiation = time.time()
                         for _ in range(32):  # sufficient iterations for typical tolerances
                             if abs(q_high - q_low) < 1e-3:
+                                negotiation_time_delta = time.time() - startNegotiation
+                                print(f"[Time-log] negotiation time delta: {negotiation_time_delta}s")
+                                total_negotiation_time += negotiation_time_delta  
                                 break
                             q_mid = 0.5 * (q_low + q_high)
                             res_mid = clearing_price_root(q_mid)
@@ -262,7 +280,7 @@ class ServerSocket:
             with self.mode_lock:
                 self.mode = "accepting"
             print(f"[MPR-INT] Negotiation complete on iteration {current_iteration}. Resuming job acceptance mode.")
-            print("[MPR-INT] Bidding history:", bidding_history)
+            # print("[MPR-INT] Bidding history:", bidding_history)
 
             if last_valid_q is None or last_valid_bids is None:
                 print("[MPR-INT] Negotiation did not converge to a valid clearing price/bids.")
@@ -273,5 +291,7 @@ class ServerSocket:
             print("[MPR-INT] computing final supply array...")
             ts = time.time()
             final_supply_array = self.compute_final_supply_array(last_valid_q, last_valid_bids)
-            print(f"[MPR-INT] Final Supply Array computed in {(time.time() - ts):.3f}s:", final_supply_array)
-        return final_supply_array,bidding_history
+            print(f"[MPR-INT] Final Supply Array computed in {(time.time() - ts):.3f}s:")
+            print("[MPR-INT][Time-log] Total negotiation time:", total_negotiation_time, "s")
+            print("[MPR-INT][Time-log] Total communication time:", total_communication_time, "s")
+        return final_supply_array,bidding_history   

@@ -67,12 +67,12 @@ class JobManager:
         self.mark_negotiation_complete(supply_array)
         elapsed = time.perf_counter() - start
         self.market_clearing_execution_time = elapsed
-        print(f"x and finalization completed in {elapsed:.2f} seconds.")
+        print(f"[Time-log] x and finalization completed in {elapsed:.2f} seconds.")
 
     def mark_negotiation_complete(self,supplyValues):
         self.negotiating = False
         supply_list = supplyValues[0]  # Unpack job-level supply entries
-        print("[JobManager] Negotiation complete. Supply values:", supply_list)
+        # print("[JobManager] Negotiation complete. Supply values:", supply_list)
 
         with self.lock:
             job_map = {entry["job_id"]: entry for entry in supply_list}
@@ -92,7 +92,7 @@ class JobManager:
                     new_power = float(power_func(delta_m))
                     job["current_power"] = new_power
 
-                    print(f"[JobManager] {job_id}: delta_m={delta_m:.4f}, utilization={new_utilization:.4f}, power={new_power:.2f}")
+                    # print(f"[JobManager] {job_id}: delta_m={delta_m:.4f}, utilization={new_utilization:.4f}, power={new_power:.2f}")
 
             total_power = self.get_total_power()
             print(f"[JobManager] Updated total power after negotiation: {total_power:.2f}")
