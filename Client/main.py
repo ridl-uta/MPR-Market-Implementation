@@ -11,9 +11,9 @@ import os
 from functools import lru_cache
 
 CLIENT_NAME = f"Worker_{uuid.uuid4().hex[:6]}"
-HPC_MANAGER_HOST = "127.0.0.1"
-HPC_MANAGER_PORT = 8000
-HPC_MANAGER_FLASK_SERVER_PORT = 5000
+HPC_MANAGER_HOST = os.getenv("HPC_MANAGER_HOST", "127.0.0.1")
+HPC_MANAGER_PORT = int(os.getenv("HPC_MANAGER_PORT", "8000"))
+HPC_MANAGER_FLASK_SERVER_PORT = int(os.getenv("HPC_MANAGER_FLASK_SERVER_PORT", "5000"))
 
 # # Load and tag all application jobs
 # xls_path = "all_model_data.xlsx"

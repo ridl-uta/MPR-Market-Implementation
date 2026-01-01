@@ -31,6 +31,9 @@ services:
       - JOB_CHOICES=xsbench minife comd
       - DELAY_START=15
       - DELAY_STEP=2
+      - HPC_MANAGER_HOST=server
+      - HPC_MANAGER_PORT=8000
+      - HPC_MANAGER_FLASK_SERVER_PORT=5000
     networks:
       - hpcnet    
 
