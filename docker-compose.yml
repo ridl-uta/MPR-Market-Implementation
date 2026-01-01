@@ -39,6 +39,8 @@ services:
 
 networks:
   hpcnet:
+    driver: overlay
+    attachable: true
 
 volumes:
   client-shared:
