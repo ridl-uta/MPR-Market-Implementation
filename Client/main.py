@@ -242,4 +242,5 @@ if __name__ == "__main__":
     # Uncomment if your server supports /ping endpoint
     # threading.Thread(target=keep_alive, args=(args.host, args.http_port), daemon=True).start()
 
+    print(f"[{CLIENT_NAME}] Connecting to host={args.host}, port={args.port}")
     persistent_client_loop(job_msg, perf_arrays, delta_max, args.host, args.port)
