@@ -32,6 +32,9 @@ services:
       - HPC_MANAGER_HOST=192.168.2.111
       - HPC_MANAGER_PORT=8000
       - HPC_MANAGER_FLASK_SERVER_PORT=5000
+      - BID_CACHE_Q_MIN=0.5
+      - BID_CACHE_Q_MAX=3.0
+      - BID_CACHE_Q_STEPS=20
     
 
 volumes:

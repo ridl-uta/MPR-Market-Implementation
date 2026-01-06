@@ -224,23 +224,36 @@ if __name__ == "__main__":
     performance_df = base_jobs_df[base_jobs_df["Job_Type"] == args.job]
 
 
-    job_msg, perf_df = create_dummy_job(args.job, performance_df)
-    delta_max = perf_df["Resource Reduction"].max()
-    # Precompute sorted arrays for faster bidding
-    perf_sorted = perf_df.sort_values("Resource Reduction")
-    rr = perf_sorted["Resource Reduction"].to_numpy()
-    ee = perf_sorted["Extra Execution"].to_numpy()
-    perf_arrays = {
-        "rr": rr,
-        "ee": ee,
-        "rr_tuple": tuple(rr),
-        "ee_tuple": tuple(ee),
-    }
-    job_id = ""
+job_msg, perf_df = create_dummy_job(args.job, performance_df)
+delta_max = perf_df["Resource Reduction"].max()
+# Precompute sorted arrays for faster bidding
+perf_sorted = perf_df.sort_values("Resource Reduction")
+rr = perf_sorted["Resource Reduction"].to_numpy()
+ee = perf_sorted["Extra Execution"].to_numpy()
+perf_arrays = {
+    "rr": rr,
+    "ee": ee,
+    "rr_tuple": tuple(rr),
+    "ee_tuple": tuple(ee),
+}
+job_id = ""
+
+# Optional: pre-warm the bid cache across a configurable q range
+try:
+    q_min = float(os.getenv("BID_CACHE_Q_MIN", "0.5"))
+    q_max = float(os.getenv("BID_CACHE_Q_MAX", "3.0"))
+    q_steps = int(os.getenv("BID_CACHE_Q_STEPS", "0"))
+    if q_steps > 0 and q_max > q_min:
+        for q_val in np.linspace(q_min, q_max, q_steps):
+            q_key = round(q_val, 3)
+            cached_bid_gain(q_key, delta_max, perf_arrays["rr_tuple"], perf_arrays["ee_tuple"])
+        print(f"[{CLIENT_NAME}] Pre-warmed bid cache over q ∈ [{q_min}, {q_max}] with {q_steps} steps")
+except Exception as e:
+    print(f"[{CLIENT_NAME}] Failed to pre-warm bid cache: {e}")
 
 
-    # Uncomment if your server supports /ping endpoint
-    # threading.Thread(target=keep_alive, args=(args.host, args.http_port), daemon=True).start()
+# Uncomment if your server supports /ping endpoint
+# threading.Thread(target=keep_alive, args=(args.host, args.http_port), daemon=True).start()
 
-    print(f"[{CLIENT_NAME}] Connecting to host={args.host}, port={args.port}")
-    persistent_client_loop(job_msg, perf_arrays, delta_max, args.host, args.port)
+print(f"[{CLIENT_NAME}] Connecting to host={args.host}, port={args.port}")
+persistent_client_loop(job_msg, perf_arrays, delta_max, args.host, args.port)
