@@ -56,9 +56,14 @@ echo "[Entrypoint] Selected job: $JOB_NAME"
 echo "[Entrypoint] Sleeping for $DELAY_SEC seconds before starting..."
 sleep "$DELAY_SEC"
 
+# Use env-provided host/ports if set, otherwise defaults
+HOST="${HPC_MANAGER_HOST:-server}"
+PORT="${HPC_MANAGER_PORT:-8000}"
+HTTP_PORT="${HPC_MANAGER_FLASK_SERVER_PORT:-5000}"
+
 exec python3 -u main.py \
   --job "$JOB_NAME" \
   --perf_data_path /data/all_model_data.xlsx \
-  --host server \
-  --port 8000 \
-  --http_port 5000
+  --host "$HOST" \
+  --port "$PORT" \
+  --http_port "$HTTP_PORT"
