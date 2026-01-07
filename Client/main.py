@@ -238,16 +238,14 @@ perf_arrays = {
 }
 job_id = ""
 
-# Optional: pre-warm the bid cache across a configurable q range
+# Optional: pre-warm the bid cache at the midpoint of a configurable q range
 try:
     q_min = float(os.getenv("BID_CACHE_Q_MIN", "0.5"))
     q_max = float(os.getenv("BID_CACHE_Q_MAX", "3.0"))
-    q_steps = int(os.getenv("BID_CACHE_Q_STEPS", "0"))
-    if q_steps > 0 and q_max > q_min:
-        for q_val in np.linspace(q_min, q_max, q_steps):
-            q_key = round(q_val, 3)
-            cached_bid_gain(q_key, delta_max, perf_arrays["rr_tuple"], perf_arrays["ee_tuple"])
-        print(f"[{CLIENT_NAME}] Pre-warmed bid cache over q ∈ [{q_min}, {q_max}] with {q_steps} steps")
+    if q_max > q_min:
+        q_mid = round((q_min + q_max) / 2.0, 3)
+        cached_bid_gain(q_mid, delta_max, perf_arrays["rr_tuple"], perf_arrays["ee_tuple"])
+        print(f"[{CLIENT_NAME}] Pre-warmed bid cache at q_mid={q_mid} (range [{q_min}, {q_max}])")
 except Exception as e:
     print(f"[{CLIENT_NAME}] Failed to pre-warm bid cache: {e}")
 
