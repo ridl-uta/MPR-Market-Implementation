@@ -34,7 +34,6 @@ services:
       - HPC_MANAGER_FLASK_SERVER_PORT=5000
       - BID_CACHE_Q_MIN=0.1
       - BID_CACHE_Q_MAX=5.0
-      - BID_CACHE_Q_STEPS=20
     
 
 volumes:
