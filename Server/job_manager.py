@@ -46,9 +46,13 @@ class JobManager:
 
         # Trigger MPR-INT if over power budget
         if total_power > self.subscribed_power and self.server_socket:
-            time.sleep(10)  # Allow some time for the server to process
-            print("[JobManager] Subscribed power exceeded. Initiating MPR-INT negotiation...")
-            threading.Thread(target=self.negotiate_and_finalize,args=(self.get_total_required_power() - (self.subscribed_power - .5),)).start()
+            if not self.negotiating:
+                self.negotiating = True
+                print("[JobManager] Subscribed power exceeded. Scheduling MPR-INT negotiation in 20s...")
+                C_target = self.get_total_required_power() - (self.subscribed_power - 0.5)
+                threading.Thread(target=self._delayed_negotiate, args=(C_target,), daemon=True).start()
+            else:
+                print("[JobManager] Negotiation already scheduled/in-progress; skipping trigger.")
 
         return job_id
     
@@ -68,6 +72,15 @@ class JobManager:
         elapsed = time.perf_counter() - start
         self.market_clearing_execution_time = elapsed
         print(f"[Time-log] x and finalization completed in {elapsed:.2f} seconds.")
+
+    def _delayed_negotiate(self, C_target):
+        """Delay negotiation start to allow jobs to settle; ensures flag resets on failure."""
+        try:
+            time.sleep(20)
+            self.negotiate_and_finalize(C_target)
+        except Exception as e:
+            print(f"[JobManager] Negotiation failed: {e}")
+            self.negotiating = False
 
     def mark_negotiation_complete(self,supplyValues):
         self.negotiating = False

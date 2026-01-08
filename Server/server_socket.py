@@ -235,12 +235,12 @@ class ServerSocket:
                         missing.append(job_id)
                 if latencies:
                     lat_arr = np.array(latencies)
-                    print(f"[MPR-INT] Bid latencies (s): min={lat_arr.min():.3f}, median={np.median(lat_arr):.3f}, max={lat_arr.max():.3f}")
+                    print(f"[MPR-INT][Time-log] Bid latencies (s): min={lat_arr.min():.3f}, median={np.median(lat_arr):.3f}, max={lat_arr.max():.3f}")
                     # Print every latency so we can see stragglers
                     detailed_sorted = sorted(detailed, key=lambda x: x[1], reverse=True)
-                    print("[MPR-INT] Bid latencies detail (job:seconds):", ", ".join(f"{jid}:{lat:.3f}" for jid, lat in detailed_sorted))
+                    print("[MPR-INT][Time-log] Bid latencies detail (job:seconds):", ", ".join(f"{jid}:{lat:.3f}" for jid, lat in detailed_sorted))
                 if missing:
-                    print(f"[MPR-INT] Missing bids from: {', '.join(missing)}")
+                    print(f"[MPR-INT][Time-log] Missing bids from: {', '.join(missing)}")
 
                 communication_time_delta = time.time() - startTimeCommunication
                 print(f"[Time-log] communication time delta: {communication_time_delta}s")
