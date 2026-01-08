@@ -225,15 +225,20 @@ class ServerSocket:
                 # Log bid latencies before running bisection
                 latencies = []
                 missing = []
+                detailed = []
                 for job_id in current_bids.keys():
                     if job_id in self.bid_received_times and job_id in send_times:
                         lat = self.bid_received_times[job_id] - send_times[job_id]
                         latencies.append(lat)
+                        detailed.append((job_id, lat))
                     else:
                         missing.append(job_id)
                 if latencies:
                     lat_arr = np.array(latencies)
                     print(f"[MPR-INT] Bid latencies (s): min={lat_arr.min():.3f}, median={np.median(lat_arr):.3f}, max={lat_arr.max():.3f}")
+                    # Print every latency so we can see stragglers
+                    detailed_sorted = sorted(detailed, key=lambda x: x[1], reverse=True)
+                    print("[MPR-INT] Bid latencies detail (job:seconds):", ", ".join(f"{jid}:{lat:.3f}" for jid, lat in detailed_sorted))
                 if missing:
                     print(f"[MPR-INT] Missing bids from: {', '.join(missing)}")
 
