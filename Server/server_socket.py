@@ -17,6 +17,7 @@ class ServerSocket:
         self.mode = "accepting"
         self.mode_lock = threading.Lock()
         self.active_bids = {}
+        self.bid_received_times = {}
         job_manager.server_socket = self
 
     def send_pickle_message(self, conn, obj):
@@ -90,6 +91,7 @@ class ServerSocket:
                         bid = message.get("bid")
                         if job_id and bid is not None:    
                             self.active_bids[job_id] = bid
+                            self.bid_received_times[job_id] = time.perf_counter()
                             #print(f"[Server] Received bid from {job_id}: {bid:.4f}")
                             self.send_pickle_message(conn, {"message": "Bid received."})
                         else:
@@ -197,6 +199,8 @@ class ServerSocket:
                 print(f"[MPR-INT] Iteration {iteration}, Sending q′ = {q_current:.4f}")
                 current_bids = {job["job_id"]: None for job in self.job_manager.jobs}
                 self.active_bids.clear()
+                self.bid_received_times.clear()
+                send_times = {job["job_id"]: time.perf_counter() for job in self.job_manager.jobs}
 
                 # Pre-serialize the payload once and send in parallel to avoid slow sockets blocking others
                 payload = {"command": "update_price", "q": q_current}
@@ -217,6 +221,21 @@ class ServerSocket:
                             current_bids[job_id] = self.active_bids[job_id]
                             remaining_jobs.remove(job_id)
                     # time.sleep(0.05)
+
+                # Log bid latencies before running bisection
+                latencies = []
+                missing = []
+                for job_id in current_bids.keys():
+                    if job_id in self.bid_received_times and job_id in send_times:
+                        lat = self.bid_received_times[job_id] - send_times[job_id]
+                        latencies.append(lat)
+                    else:
+                        missing.append(job_id)
+                if latencies:
+                    lat_arr = np.array(latencies)
+                    print(f"[MPR-INT] Bid latencies (s): min={lat_arr.min():.3f}, median={np.median(lat_arr):.3f}, max={lat_arr.max():.3f}")
+                if missing:
+                    print(f"[MPR-INT] Missing bids from: {', '.join(missing)}")
 
                 communication_time_delta = time.time() - startTimeCommunication
                 print(f"[Time-log] communication time delta: {communication_time_delta}s")
