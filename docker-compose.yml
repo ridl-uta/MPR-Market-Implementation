@@ -12,7 +12,7 @@ services:
     # command: python -m debugpy --listen 0.0.0.0:5678 --wait-for-client main.py
     command: python main.py
     environment:
-      - SUBSCRIBED_POWER=286000
+      - SUBSCRIBED_POWER=289000
 
   client:
     image: client-image
