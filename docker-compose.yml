@@ -11,6 +11,10 @@ services:
     working_dir: /app
     # command: python -m debugpy --listen 0.0.0.0:5678 --wait-for-client main.py
     command: python main.py
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 524288
     environment:
       - SUBSCRIBED_POWER=${SUBSCRIBED_POWER:-287000}
 
