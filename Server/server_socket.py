@@ -268,7 +268,7 @@ class ServerSocket:
                     else:
                         startNegotiation = time.time()
                         for _ in range(32):  # sufficient iterations for typical tolerances
-                            if abs(q_high - q_low) < 1e-6:
+                            if abs(q_high - q_low) < 1e-4:
                                 negotiation_time_delta = time.time() - startNegotiation
                                 print(f"[Time-log] negotiation time delta: {negotiation_time_delta}s")
                                 total_negotiation_time += negotiation_time_delta  
