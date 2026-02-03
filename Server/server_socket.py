@@ -304,6 +304,7 @@ class ServerSocket:
             with self.mode_lock:
                 self.mode = "accepting"
             print(f"[MPR-INT] Negotiation complete on iteration {current_iteration}. Resuming job acceptance mode.")
+            print(f"[Server] Connected clients: {len(self.connected_clients)}")
             # print("[MPR-INT] Bidding history:", bidding_history)
 
             if last_valid_q is None or last_valid_bids is None:
