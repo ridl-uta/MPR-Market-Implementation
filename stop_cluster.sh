@@ -9,6 +9,8 @@ REMOTE_DIR="/shared/MPR-Market-Implementation"
 
 PARALLEL="${PARALLEL:-4}"
 
+# Stop local containers first
+docker compose down
+
 printf "%s\n" "${HOSTS[@]}" | \
   xargs -n1 -P"$PARALLEL" -I{} ssh {} "cd '$REMOTE_DIR' && docker compose down"
-
