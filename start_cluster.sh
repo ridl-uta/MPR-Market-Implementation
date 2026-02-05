@@ -25,5 +25,4 @@ ssh "$SERVER_HOST" "cd '$REMOTE_DIR' && SUBSCRIBED_POWER='$SUBSCRIBED_POWER' doc
 printf "%s\n" "${CLIENT_HOSTS[@]}" | \
   xargs -n1 -P"$PARALLEL" -I{} ssh {} "cd '$REMOTE_DIR' && \
   HPC_MANAGER_HOST='$HPC_MANAGER_HOST' HPC_MANAGER_PORT='$HPC_MANAGER_PORT' HPC_MANAGER_FLASK_SERVER_PORT='$HPC_MANAGER_FLASK_SERVER_PORT' \
-  docker compose up -d --no-deps --scale client=$CLIENT_SCALE client"
-
+  docker compose up -d --build --no-deps --scale client=$CLIENT_SCALE client"
