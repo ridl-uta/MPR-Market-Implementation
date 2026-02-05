@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Hosts
-SERVER_HOST="ridlserver12"
+SERVER_HOST="local"
 CLIENT_HOSTS=(ridlserver04 ridlserver05 ridlserver11 ridlserver12)
 
 # Remote repo path
@@ -18,8 +18,12 @@ HPC_MANAGER_FLASK_SERVER_PORT="${HPC_MANAGER_FLASK_SERVER_PORT:-5000}"
 CLIENT_SCALE="${CLIENT_SCALE:-40}"
 PARALLEL="${PARALLEL:-4}"
 
-# Start server first
-ssh "$SERVER_HOST" "cd '$REMOTE_DIR' && SUBSCRIBED_POWER='$SUBSCRIBED_POWER' docker compose up -d --build --force-recreate server"
+# Start server first (local)
+if [[ "$SERVER_HOST" == "local" ]]; then
+  SUBSCRIBED_POWER="$SUBSCRIBED_POWER" docker compose up -d --build --force-recreate server
+else
+  ssh "$SERVER_HOST" "cd '$REMOTE_DIR' && SUBSCRIBED_POWER='$SUBSCRIBED_POWER' docker compose up -d --build --force-recreate server"
+fi
 
 # Start clients on all hosts in parallel
 printf "%s\n" "${CLIENT_HOSTS[@]}" | \
