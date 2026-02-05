@@ -5,6 +5,7 @@ from flask_socketio import SocketIO, emit
 import threading
 from job_manager import JobManager
 from server_socket import ServerSocket
+from log_utils import log_print as print
 
 app = Flask(__name__)
 job_manager = JobManager()

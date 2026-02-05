@@ -7,6 +7,7 @@ import pandas as pd
 import io
 import time
 from concurrent.futures import ThreadPoolExecutor
+from log_utils import log_print as print
 
 class ServerSocket:
     def __init__(self, job_manager, host="0.0.0.0", port=8000):

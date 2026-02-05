@@ -8,6 +8,7 @@ from scipy.interpolate import interp1d
 import io
 import time
 import os
+from log_utils import log_print as print
 
 class JobManager:
     def __init__(self, server_socket=None):
