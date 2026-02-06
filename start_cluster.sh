@@ -21,6 +21,8 @@ PARALLEL="${PARALLEL:-4}"
 
 SUBSCRIBED_POWER="$SUBSCRIBED_POWER" docker compose up -d --build --force-recreate server
 
+docker compose up -d --build --force-recreate --no-deps --scale client=$CLIENT_SCALE client
+
 # Start clients on all hosts in parallel
 printf "%s\n" "${CLIENT_HOSTS[@]}" | \
   xargs -n1 -P"$PARALLEL" -I{} ssh {} "cd '$REMOTE_DIR' && \
