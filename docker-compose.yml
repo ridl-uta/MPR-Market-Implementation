@@ -26,7 +26,7 @@ services:
     volumes:
       - ./Client:/app
       - ./Data:/data
-      - client-shared:/shared
+      - /shared:/shared
     working_dir: /app
     entrypoint: ["./entrypoint.sh"]
     environment:
@@ -40,5 +40,4 @@ services:
       - BID_CACHE_Q_MAX=${BID_CACHE_Q_MAX:-5.0}
     
 
-volumes:
-  client-shared:
+volumes: {}
