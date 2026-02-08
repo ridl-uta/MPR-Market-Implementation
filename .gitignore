@@ -22,3 +22,6 @@ dist/
 
 # Logs
 Server/logs/
+
+# Shared temp volume
+temp/
