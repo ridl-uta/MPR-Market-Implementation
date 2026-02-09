@@ -2,6 +2,7 @@
 import subprocess
 import time
 import argparse
+import sys
 
 parser = argparse.ArgumentParser(description="Spawn multiple client processes.")
 parser.add_argument("--count", type=int, default=3, help="Number of clients to spawn")
@@ -25,7 +26,7 @@ client_processes = []
 
 for i in range(num_clients):
     job = job_types[i % len(job_types)]
-    process = subprocess.Popen(["python", script_path, "--job", job, "--host", hpc_manager_host, "--port",str(hpc_manager_port),
+    process = subprocess.Popen([sys.executable, script_path, "--job", job, "--host", hpc_manager_host, "--port",str(hpc_manager_port),
                                 "--perf_data_path", perf_data_path,"--http_port", str(hpc_manager_flask_port)],)
     client_processes.append(process)
     print(f"Started client {i+1} with job: {job}")
