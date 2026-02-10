@@ -178,9 +178,12 @@ class ServerSocket:
             delta = max(delta_max - bid / q_final, 0)
             supply_array.append({
                 "job_id": job_id,
-                "bid": round(bid, 4),
-                "clearing_price_q": round(q_final, 4),
-                "delta_m": round(delta, 4)
+                "bid": bid,
+                "clearing_price_q": q_final,
+                "delta_m": delta,
+                "bid_disp": round(bid, 4),
+                "clearing_price_q_disp": round(q_final, 4),
+                "delta_m_disp": round(delta, 4),
             })
 
         print(f"[MPR-INT] Final supply array built in {(time.time() - start_ts):.3f}s")
@@ -318,7 +321,7 @@ class ServerSocket:
 
                 delta_q = abs(q_new - q_current)
                 print(f"[MPR-INT] Current q = {q_current:.4f} New q′ = {q_new:.4f}, Δq = {delta_q:.6f}")
-                if abs(residual) <= residual_tol:
+                if residual >= 0 and residual <= residual_tol:
                     print("[MPR-INT] Clearing price converged by residual tolerance.")
                     last_valid_q = q_new
                     last_valid_bids = current_bids.copy()
