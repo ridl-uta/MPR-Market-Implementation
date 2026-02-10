@@ -133,20 +133,20 @@ class ServerSocket:
     #     return total_reduction
 
     def get_total_reduction_at_q(self, q, current_bids, job_dfs):
-        def supply_function(b, q, delta_max):
-            return max(delta_max - b / q, 0)
-
+        inv_q = 1.0 / q
         total_power = 0.0
-        for job, b in zip(self.job_manager.jobs, current_bids.values()):
-            # df = pd.read_json(io.StringIO(job["perf_data"]))
-            # delta_max = df["Resource Reduction"].max()
-            delta_max = job["max_reduction"]  # Assuming delta_max is stored in the job data
-            delta_m = supply_function(b, q, delta_max)
+        jobs = self.job_manager.jobs
+        bids = current_bids.values()
 
-            # Compute actual power using the job's interpolation function
+        for job, b in zip(jobs, bids):
+            # delta_max is stored in the job data
+            delta_m = job["max_reduction"] - (b * inv_q)
+            if delta_m <= 0:
+                continue
+
             power_func = job.get("power_func")
             if power_func:
-                power_reduction =job["power_max"] - float(power_func(delta_m))
+                power_reduction = job["power_max"] - float(power_func(delta_m))
                 total_power += power_reduction
             else:
                 print(f"[Warning] Missing power_func for job {job['job_id']}")
