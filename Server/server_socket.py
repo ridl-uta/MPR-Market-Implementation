@@ -8,6 +8,7 @@ import io
 import time
 from concurrent.futures import ThreadPoolExecutor
 from log_utils import log_print as print
+from scipy.optimize import root_scalar
 
 class ServerSocket:
     def __init__(self, job_manager, host="0.0.0.0", port=8000):
@@ -144,12 +145,19 @@ class ServerSocket:
             if delta_m <= 0:
                 continue
 
-            power_func = job.get("power_func")
-            if power_func:
-                power_reduction = job["power_max"] - float(power_func(delta_m))
-                total_power += power_reduction
+            rr = job.get("rr")
+            pw = job.get("pw")
+            if rr is not None and pw is not None:
+                # Fast path: use numpy interpolation (assumes rr is ordered)
+                power = np.interp(delta_m, rr, pw)
+                total_power += job["power_max"] - power
             else:
-                print(f"[Warning] Missing power_func for job {job['job_id']}")
+                power_func = job.get("power_func")
+                if power_func:
+                    power_reduction = job["power_max"] - float(power_func(delta_m))
+                    total_power += power_reduction
+                else:
+                    print(f"[Warning] Missing power_func for job {job['job_id']}")
 
         return total_power
 
@@ -268,19 +276,37 @@ class ServerSocket:
                         q_new, residual = q_high, res_high
                     else:
                         startNegotiation = time.time()
-                        for _ in range(32):  # sufficient iterations for typical tolerances
-                            if abs(q_high - q_low) < 1e-4:
-                                negotiation_time_delta = time.time() - startNegotiation
-                                print(f"[Time-log] negotiation time delta: {negotiation_time_delta}s")
-                                total_negotiation_time += negotiation_time_delta  
-                                break
-                            q_mid = 0.5 * (q_low + q_high)
-                            res_mid = clearing_price_root(q_mid)
-                            if res_mid >= 0:
-                                q_high, res_high = q_mid, res_mid
-                            else:
-                                q_low, res_low = q_mid, res_mid
-                        q_new, residual = q_high, res_high
+                        res = root_scalar(
+                            clearing_price_root,
+                            bracket=(q_low, q_high),
+                            method="brentq",
+                            xtol=1e-4,
+                            rtol=1e-8,
+                            maxiter=64,
+                        )
+                        q_new = res.root
+                        residual = clearing_price_root(q_new)
+
+                        # Bias to the smallest non-negative residual
+                        if residual < 0:
+                            step = max(1e-5, (q_high - q_low) * 1e-4)
+                            q_try = min(q_high, q_new + step)
+                            r_try = clearing_price_root(q_try)
+                            if r_try >= 0:
+                                q_new, residual = q_try, r_try
+                        else:
+                            step = max(1e-5, (q_high - q_low) * 1e-4)
+                            for _ in range(5):
+                                q_try = max(q_low, q_new - step)
+                                r_try = clearing_price_root(q_try)
+                                if r_try >= 0 and r_try < residual:
+                                    q_new, residual = q_try, r_try
+                                else:
+                                    break
+
+                        negotiation_time_delta = time.time() - startNegotiation
+                        print(f"[Time-log] negotiation time delta: {negotiation_time_delta}s")
+                        total_negotiation_time += negotiation_time_delta
                         print(f"[MPR-INT] Chose smallest q′ with non-negative residual: q={q_new:.6f}, residual={residual:.6f}")
                 except ValueError:
                     print("[MPR-INT] Bisection failed to converge.")

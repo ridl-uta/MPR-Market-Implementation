@@ -26,7 +26,9 @@ class JobManager:
             df = pd.read_json(io.StringIO(perf_data)).reset_index(drop=True)
             interp_func = self._create_interp_func(perf_data)
             job_id = 'job_id_' + str(self._job_counter)
-            max_reduction = df["Resource Reduction"].max()
+            resources = df["Resource Reduction"].to_numpy()
+            powers = df["Power"].to_numpy()
+            max_reduction = resources.max()
             power_max = df["Power"].max()
 
             self.jobs.append({
@@ -38,6 +40,8 @@ class JobManager:
                 "initial_utilization": initial_utilization,
                 "current_bid": None,
                 "power_max": power_max,
+                "rr": resources,
+                "pw": powers,
             })
             print(f"[JobManager] Job added: {job_id}")
             self._job_counter += 1
