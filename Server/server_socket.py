@@ -5,6 +5,7 @@ import traceback
 import numpy as np
 import pandas as pd
 import io
+import os
 import time
 from concurrent.futures import ThreadPoolExecutor
 from log_utils import log_print as print
@@ -191,6 +192,8 @@ class ServerSocket:
         print("[MPR-INT] Starting MPR-INT negotiation...Target C:", C_target)
 
         print("[MPR-INT] Starting negotiation mode. Rejecting new job submissions.")
+        residual_tol = float(os.getenv("RESIDUAL_TOL", "1.0"))
+        C_target_eff = C_target + residual_tol
         q_current = (q_bounds[0] + q_bounds[1]) / 2
         delta_q_current = None
         bidding_history = {}
@@ -260,7 +263,7 @@ class ServerSocket:
                 def clearing_price_root(q_try):
                     total_reduction = self.get_total_reduction_at_q(q_try, current_bids, [job["perf_data"] for job in self.job_manager.jobs])
                     # print(f"[MPR-INT] Trying q={q_try:.6f}, Total Reduction={total_reduction:.6f} residual={total_reduction - C_target:.6f} ")
-                    return total_reduction - C_target
+                    return total_reduction - C_target_eff
 
                 try:
                     # Manual bisection to find smallest q where residual >= 0
@@ -315,6 +318,11 @@ class ServerSocket:
 
                 delta_q = abs(q_new - q_current)
                 print(f"[MPR-INT] Current q = {q_current:.4f} New q′ = {q_new:.4f}, Δq = {delta_q:.6f}")
+                if abs(residual) <= residual_tol:
+                    print("[MPR-INT] Clearing price converged by residual tolerance.")
+                    last_valid_q = q_new
+                    last_valid_bids = current_bids.copy()
+                    break
                 if delta_q_current:
                     if abs(delta_q_current-delta_q) < tolerance:
                         print("[MPR-INT] Clearing price converged.")
