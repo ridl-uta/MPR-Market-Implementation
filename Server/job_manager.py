@@ -28,8 +28,11 @@ class JobManager:
             job_id = 'job_id_' + str(self._job_counter)
             resources = df["Resource Reduction"].to_numpy()
             powers = df["Power"].to_numpy()
+            order = np.argsort(resources)
+            resources = resources[order]
+            powers = powers[order]
             max_reduction = resources.max()
-            power_max = df["Power"].max()
+            power_max = powers.max()
 
             self.jobs.append({
                 "job_id": job_id,
