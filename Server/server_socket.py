@@ -357,4 +357,5 @@ class ServerSocket:
             print(f"[MPR-INT] Final Supply Array computed in {(time.time() - ts):.3f}s:")
             print("[MPR-INT][Time-log] Total negotiation time:", total_negotiation_time, "s")
             print("[MPR-INT][Time-log] Total communication time:", total_communication_time, "s")
+            print("[MPR-INT][Time-log] Total time:", total_negotiation_time + total_communication_time, "s")
         return final_supply_array,bidding_history   
