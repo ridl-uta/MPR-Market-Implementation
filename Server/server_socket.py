@@ -192,7 +192,7 @@ class ServerSocket:
         print("[MPR-INT] Starting MPR-INT negotiation...Target C:", C_target)
 
         print("[MPR-INT] Starting negotiation mode. Rejecting new job submissions.")
-        residual_tol = float(os.getenv("RESIDUAL_TOL", "1.0"))
+        residual_tol = float(os.getenv("RESIDUAL_TOL", "0.5"))
         C_target_eff = C_target + residual_tol
         q_current = (q_bounds[0] + q_bounds[1]) / 2
         delta_q_current = None
