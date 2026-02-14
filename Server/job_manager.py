@@ -74,8 +74,10 @@ class JobManager:
     
     def negotiate_and_finalize(self, C_target):
         start = time.perf_counter()
-        supply_array = self.server_socket.initiate_mpr_int_negotiation(C_target)
-        self.mark_negotiation_complete(supply_array)
+        result = self.server_socket.initiate_mpr_int_negotiation(C_target)
+        supply_array, bidding_history = result
+        print(f"[JobManager] Negotiation iterations: {len(bidding_history)}")
+        self.mark_negotiation_complete(result)
         elapsed = time.perf_counter() - start
         self.market_clearing_execution_time = elapsed
         print(f"[Time-log] x and finalization completed in {elapsed:.2f} seconds.")
