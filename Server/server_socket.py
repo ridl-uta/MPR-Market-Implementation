@@ -321,14 +321,9 @@ class ServerSocket:
 
                 delta_q = abs(q_new - q_current)
                 print(f"[MPR-INT] Current q = {q_current:.4f} New q′ = {q_new:.4f}, Δq = {delta_q:.6f}")
-                if residual >= 0 and residual <= residual_tol:
-                    print("[MPR-INT] Clearing price converged by residual tolerance.")
-                    last_valid_q = q_new
-                    last_valid_bids = current_bids.copy()
-                    break
                 if delta_q_current:
-                    if abs(delta_q_current-delta_q) < tolerance:
-                        print("[MPR-INT] Clearing price converged.")
+                    if abs(delta_q_current-delta_q) < tolerance and residual >= 0 and residual <= residual_tol:
+                        print("[MPR-INT] Clearing price converged (Δq + residual).")
                         last_valid_q = q_new
                         last_valid_bids = current_bids.copy()
                         break
@@ -357,5 +352,4 @@ class ServerSocket:
             print(f"[MPR-INT] Final Supply Array computed in {(time.time() - ts):.3f}s:")
             print("[MPR-INT][Time-log] Total negotiation time:", total_negotiation_time, "s")
             print("[MPR-INT][Time-log] Total communication time:", total_communication_time, "s")
-            print("[MPR-INT][Time-log] Total time:", total_negotiation_time + total_communication_time, "s")
         return final_supply_array,bidding_history   
