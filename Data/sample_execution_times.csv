@@ -1,0 +1,6 @@
+clients,execution_time_sec,communication_time_sec,computation_time_sec
+100,0.03,0.02,0.0024
+500,0.44,0.314,0.0715
+1000,0.96,0.653,0.099
+3000,2.24,1.74,.25
+5000,4.54,3.47,0.53

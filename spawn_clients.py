@@ -30,6 +30,6 @@ for i in range(num_clients):
                                 "--perf_data_path", perf_data_path,"--http_port", str(hpc_manager_flask_port)],)
     client_processes.append(process)
     print(f"Started client {i+1} with job: {job}")
-    time.sleep(1)
+    time.sleep(.25)
 
 print(f"{num_clients} clients started. They will continue running and ping the server.")
